@@ -1,0 +1,67 @@
+# General Python ignores
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg
+*.egg-info/
+.Python
+build/
+dist/
+venv/
+env/
+.venv/
+
+# IDE/Editor ignores (optional, depending on preference)
+.idea/
+.project
+.settings/
+.cache/
+.vscode/
+*.iml
+*.iws
+*.ipr
+*~
+.#*
+*.swp
+.DS_Store # macOS files
+
+# PySpark/Spark specific ignores
+# Log files and directories
+log/
+logs/
+derby.log
+
+# Build and distribution artifacts
+python/lib/pyspark.zip
+python/.eggs/
+spark-warehouse/
+metastore_db/
+conf/*.cmd
+conf/*.conf
+conf/*.properties
+conf/*.sh
+conf/*.xml
+*.jar
+
+# Checkpoint/Output directories
+checkpoint/
+output/
+results/
+
+# Temporary and generated files
+/tmp/
+work/
+eventlog/
+
+# Python test coverage
+python/test_coverage/
+htmlcov/
+.mypy_cache/
+
+# Jupyter Notebook specific (if used)
+.ipynb_checkpoints
+
+data/*
+data*
+data_cal/*
