@@ -45,3 +45,8 @@ build/
 
 ### Scala ###
 .bsp/
+
+### Data ###
+data/
+data*
+*data
