@@ -1,5 +1,7 @@
 # HW06: Spark API Performance (DataFrame vs RDD, SQL vs DataFrame)
 
+[Ссылка на репозиторий](https://github.com/krevetka-is-afk/pipelines/tree/hw06)
+
 ## Что реализовано
 
 Сделаны все требуемые сценарии:
@@ -16,6 +18,7 @@
    SQL `CASE WHEN` против `DataFrame filter + union`.
 
 Для каждого кейса сохраняются планы выполнения:
+
 - `explain("formatted")` и `explain("codegen")` для DataFrame/SQL;
 - `toDebugString` для RDD.
 
