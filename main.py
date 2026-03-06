@@ -1,5 +1,4 @@
-def main():
-    print("Hello from hw06!")
+from hw06.benchmarks import main
 
 
 if __name__ == "__main__":

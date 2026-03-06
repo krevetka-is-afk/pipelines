@@ -1,0 +1,56 @@
+===== explain(formatted) =====
+== Physical Plan ==
+AdaptiveSparkPlan (8)
++- HashAggregate (7)
+   +- Exchange (6)
+      +- HashAggregate (5)
+         +- Project (4)
+            +- Exchange (3)
+               +- Project (2)
+                  +- Range (1)
+
+
+(1) Range
+Output [1]: [id#3334L]
+Arguments: Range (0, 20000, step=1, splits=Some(24))
+
+(2) Project
+Output [2]: [cast((id#3334L % 1000) as int) AS metric#3336, cast((id#3334L % 7) as int) AS grp#3337]
+Input [1]: [id#3334L]
+
+(3) Exchange
+Input [2]: [metric#3336, grp#3337]
+Arguments: RoundRobinPartitioning(24), REPARTITION_BY_NUM, [plan_id=13059]
+
+(4) Project
+Output [3]: [metric#3336, grp#3337, CASE WHEN (metric#3336 < 200) THEN low WHEN (metric#3336 < 600) THEN mid ELSE high END AS _groupingexpression#3343]
+Input [2]: [metric#3336, grp#3337]
+
+(5) HashAggregate
+Input [3]: [metric#3336, grp#3337, _groupingexpression#3343]
+Keys [2]: [grp#3337, _groupingexpression#3343]
+Functions [2]: [partial_count(1), partial_avg(metric#3336)]
+Aggregate Attributes [3]: [count#3344L, sum#3345, count#3346L]
+Results [5]: [grp#3337, _groupingexpression#3343, count#3347L, sum#3348, count#3349L]
+
+(6) Exchange
+Input [5]: [grp#3337, _groupingexpression#3343, count#3347L, sum#3348, count#3349L]
+Arguments: hashpartitioning(grp#3337, _groupingexpression#3343, 48), ENSURE_REQUIREMENTS, [plan_id=13064]
+
+(7) HashAggregate
+Input [5]: [grp#3337, _groupingexpression#3343, count#3347L, sum#3348, count#3349L]
+Keys [2]: [grp#3337, _groupingexpression#3343]
+Functions [2]: [count(1), avg(metric#3336)]
+Aggregate Attributes [2]: [count(1)#3341L, avg(metric#3336)#3342]
+Results [4]: [grp#3337, _groupingexpression#3343 AS segment#3338, count(1)#3341L AS cnt#3339L, avg(metric#3336)#3342 AS avg_metric#3340]
+
+(8) AdaptiveSparkPlan
+Output [4]: [grp#3337, segment#3338, cnt#3339L, avg_metric#3340]
+Arguments: isFinalPlan=false
+
+
+
+===== explain(codegen) =====
+Found 0 WholeStageCodegen subtrees.
+
+

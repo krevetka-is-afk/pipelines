@@ -1,0 +1,114 @@
+===== explain(formatted) =====
+== Physical Plan ==
+AdaptiveSparkPlan (20)
++- HashAggregate (19)
+   +- Exchange (18)
+      +- HashAggregate (17)
+         +- Union (16)
+            :- Project (5)
+            :  +- Exchange (4)
+            :     +- Project (3)
+            :        +- Filter (2)
+            :           +- Range (1)
+            :- Project (10)
+            :  +- Exchange (9)
+            :     +- Project (8)
+            :        +- Filter (7)
+            :           +- Range (6)
+            +- Project (15)
+               +- Exchange (14)
+                  +- Project (13)
+                     +- Filter (12)
+                        +- Range (11)
+
+
+(1) Range
+Output [1]: [id#3350L]
+Arguments: Range (0, 20000, step=1, splits=Some(24))
+
+(2) Filter
+Input [1]: [id#3350L]
+Condition : (cast((id#3350L % 1000) as int) < 200)
+
+(3) Project
+Output [2]: [cast((id#3350L % 1000) as int) AS metric#3352, cast((id#3350L % 7) as int) AS grp#3353]
+Input [1]: [id#3350L]
+
+(4) Exchange
+Input [2]: [metric#3352, grp#3353]
+Arguments: RoundRobinPartitioning(24), REPARTITION_BY_NUM, [plan_id=13121]
+
+(5) Project
+Output [3]: [grp#3353, low AS segment#3354, metric#3352]
+Input [2]: [metric#3352, grp#3353]
+
+(6) Range
+Output [1]: [id#3357L]
+Arguments: Range (0, 20000, step=1, splits=Some(24))
+
+(7) Filter
+Input [1]: [id#3357L]
+Condition : ((cast((id#3357L % 1000) as int) >= 200) AND (cast((id#3357L % 1000) as int) < 600))
+
+(8) Project
+Output [2]: [cast((id#3357L % 1000) as int) AS metric#3359, cast((id#3357L % 7) as int) AS grp#3360]
+Input [1]: [id#3357L]
+
+(9) Exchange
+Input [2]: [metric#3359, grp#3360]
+Arguments: RoundRobinPartitioning(24), REPARTITION_BY_NUM, [plan_id=13126]
+
+(10) Project
+Output [3]: [grp#3360, mid AS segment#3355, metric#3359]
+Input [2]: [metric#3359, grp#3360]
+
+(11) Range
+Output [1]: [id#3361L]
+Arguments: Range (0, 20000, step=1, splits=Some(24))
+
+(12) Filter
+Input [1]: [id#3361L]
+Condition : (cast((id#3361L % 1000) as int) >= 600)
+
+(13) Project
+Output [2]: [cast((id#3361L % 1000) as int) AS metric#3363, cast((id#3361L % 7) as int) AS grp#3364]
+Input [1]: [id#3361L]
+
+(14) Exchange
+Input [2]: [metric#3363, grp#3364]
+Arguments: RoundRobinPartitioning(24), REPARTITION_BY_NUM, [plan_id=13131]
+
+(15) Project
+Output [3]: [grp#3364, high AS segment#3356, metric#3363]
+Input [2]: [metric#3363, grp#3364]
+
+(16) Union
+
+(17) HashAggregate
+Input [3]: [grp#3353, segment#3354, metric#3352]
+Keys [2]: [grp#3353, segment#3354]
+Functions [2]: [partial_count(1), partial_avg(metric#3352)]
+Aggregate Attributes [3]: [count#3372L, sum#3373, count#3374L]
+Results [5]: [grp#3353, segment#3354, count#3375L, sum#3376, count#3377L]
+
+(18) Exchange
+Input [5]: [grp#3353, segment#3354, count#3375L, sum#3376, count#3377L]
+Arguments: hashpartitioning(grp#3353, segment#3354, 48), ENSURE_REQUIREMENTS, [plan_id=13137]
+
+(19) HashAggregate
+Input [5]: [grp#3353, segment#3354, count#3375L, sum#3376, count#3377L]
+Keys [2]: [grp#3353, segment#3354]
+Functions [2]: [count(1), avg(metric#3352)]
+Aggregate Attributes [2]: [count(1)#3370L, avg(metric#3352)#3371]
+Results [4]: [grp#3353, segment#3354, count(1)#3370L AS cnt#3365L, avg(metric#3352)#3371 AS avg_metric#3366]
+
+(20) AdaptiveSparkPlan
+Output [4]: [grp#3353, segment#3354, cnt#3365L, avg_metric#3366]
+Arguments: isFinalPlan=false
+
+
+
+===== explain(codegen) =====
+Found 0 WholeStageCodegen subtrees.
+
+

@@ -1,0 +1,45 @@
+===== explain(formatted) =====
+== Physical Plan ==
+AdaptiveSparkPlan (7)
++- Project (6)
+   +- Exchange (5)
+      +- Project (4)
+         +- Project (3)
+            +- Filter (2)
+               +- Range (1)
+
+
+(1) Range
+Output [1]: [id#925L]
+Arguments: Range (0, 20000, step=1, splits=Some(24))
+
+(2) Filter
+Input [1]: [id#925L]
+Condition : (aggregate(array(cast((id#925L % 5) as int), cast(((id#925L + 1) % 5) as int), cast(((id#925L + 2) % 5) as int), cast(((id#925L + 3) % 5) as int)), 0, lambdafunction((lambda acc#938 + lambda x#939), lambda acc#938, lambda x#939, false), lambdafunction(lambda id#940, lambda id#940, false)) >= 6)
+
+(3) Project
+Output [3]: [id#925L, struct(a, cast((id#925L % 7) as int), b, cast((id#925L % 11) as int), c, (cast(id#925L as double) / 10.0)) AS payload#930, array(cast((id#925L % 5) as int), cast(((id#925L + 1) % 5) as int), cast(((id#925L + 2) % 5) as int), cast(((id#925L + 3) % 5) as int)) AS arr#931]
+Input [1]: [id#925L]
+
+(4) Project
+Output [4]: [id#925L, payload#930.a AS _extract_a#941, payload#930.b AS _extract_b#942, arr#931]
+Input [3]: [id#925L, payload#930, arr#931]
+
+(5) Exchange
+Input [4]: [id#925L, _extract_a#941, _extract_b#942, arr#931]
+Arguments: RoundRobinPartitioning(24), REPARTITION_BY_NUM, [plan_id=5741]
+
+(6) Project
+Output [4]: [id#925L, (_extract_a#941 + _extract_b#942) AS ab#932, transform(arr#931, lambdafunction((lambda x#937 * lambda x#937), lambda x#937, false)) AS arr_sq#933, aggregate(arr#931, 0, lambdafunction((lambda acc#938 + lambda x#939), lambda acc#938, lambda x#939, false), lambdafunction(lambda id#940, lambda id#940, false)) AS arr_sum#934]
+Input [4]: [id#925L, _extract_a#941, _extract_b#942, arr#931]
+
+(7) AdaptiveSparkPlan
+Output [4]: [id#925L, ab#932, arr_sq#933, arr_sum#934]
+Arguments: isFinalPlan=false
+
+
+
+===== explain(codegen) =====
+Found 0 WholeStageCodegen subtrees.
+
+

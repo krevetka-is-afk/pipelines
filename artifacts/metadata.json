@@ -1,0 +1,19 @@
+{
+  "sizes": [
+    2000000,
+    8000000,
+    20000000
+  ],
+  "repeats": 5,
+  "warmup": 1,
+  "master": "local[*]",
+  "shuffle_partitions": 48,
+  "plan_sample_size": 20000,
+  "cases": [
+    "df_rdd_aggregations",
+    "df_rdd_window_topn",
+    "df_rdd_nested_types",
+    "sql_df_projection_chain",
+    "sql_df_case_vs_union"
+  ]
+}

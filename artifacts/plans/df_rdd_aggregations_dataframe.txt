@@ -1,0 +1,46 @@
+===== explain(formatted) =====
+== Physical Plan ==
+AdaptiveSparkPlan (6)
++- HashAggregate (5)
+   +- HashAggregate (4)
+      +- Exchange (3)
+         +- Project (2)
+            +- Range (1)
+
+
+(1) Range
+Output [1]: [id#0L]
+Arguments: Range (0, 20000, step=1, splits=Some(24))
+
+(2) Project
+Output [2]: [cast((id#0L % 4000) as int) AS k#1, cast((id#0L % 1000) as double) AS v#2]
+Input [1]: [id#0L]
+
+(3) Exchange
+Input [2]: [k#1, v#2]
+Arguments: hashpartitioning(k#1, 24), REPARTITION_BY_NUM, [plan_id=15]
+
+(4) HashAggregate
+Input [2]: [k#1, v#2]
+Keys [1]: [k#1]
+Functions [5]: [partial_sum(v#2), partial_avg(v#2), partial_min(v#2), partial_max(v#2), partial_count(1)]
+Aggregate Attributes [6]: [sum#17, sum#18, count#19L, min#20, max#21, count#22L]
+Results [7]: [k#1, sum#23, sum#24, count#25L, min#26, max#27, count#28L]
+
+(5) HashAggregate
+Input [7]: [k#1, sum#23, sum#24, count#25L, min#26, max#27, count#28L]
+Keys [1]: [k#1]
+Functions [5]: [sum(v#2), avg(v#2), min(v#2), max(v#2), count(1)]
+Aggregate Attributes [5]: [sum(v#2)#13, avg(v#2)#14, min(v#2)#15, max(v#2)#16, count(1)#12L]
+Results [6]: [k#1, sum(v#2)#13 AS sum_v#4, avg(v#2)#14 AS avg_v#5, min(v#2)#15 AS min_v#6, max(v#2)#16 AS max_v#7, count(1)#12L AS cnt#8L]
+
+(6) AdaptiveSparkPlan
+Output [6]: [k#1, sum_v#4, avg_v#5, min_v#6, max_v#7, cnt#8L]
+Arguments: isFinalPlan=false
+
+
+
+===== explain(codegen) =====
+Found 0 WholeStageCodegen subtrees.
+
+

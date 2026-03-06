@@ -1,0 +1,56 @@
+===== explain(formatted) =====
+== Physical Plan ==
+AdaptiveSparkPlan (8)
++- HashAggregate (7)
+   +- Exchange (6)
+      +- HashAggregate (5)
+         +- Project (4)
+            +- Exchange (3)
+               +- Project (2)
+                  +- Range (1)
+
+
+(1) Range
+Output [1]: [id#1569L]
+Arguments: Range (0, 20000, step=1, splits=Some(24))
+
+(2) Project
+Output [4]: [id#1569L, (id#1569L % 97) AS a#1571L, ((id#1569L * 7) % 101) AS b#1572L, ((id#1569L * 13) % 89) AS c#1573L]
+Input [1]: [id#1569L]
+
+(3) Exchange
+Input [4]: [id#1569L, a#1571L, b#1572L, c#1573L]
+Arguments: RoundRobinPartitioning(24), REPARTITION_BY_NUM, [plan_id=7613]
+
+(4) Project
+Output [2]: [pmod(((pmod(((pmod(((pmod(((pmod(((pmod(((pmod(((pmod(((pmod(((pmod(((pmod(((pmod(((pmod(((pmod(((pmod(((pmod(((pmod(((pmod(((pmod(((pmod(((pmod(((pmod(((pmod(((pmod(((id#1569L + 1) * 4), 1000003) + 2) * 5), 1000003) + 3) * 6), 1000003) + 4) * 7), 1000003) + 5) * 8), 1000003) + 6) * 9), 1000003) + 7) * 10), 1000003) + 8) * 11), 1000003) + 9) * 12), 1000003) + 10) * 13), 1000003) + 11) * 14), 1000003) + 12) * 15), 1000003) + 13) * 16), 1000003) + 14) * 17), 1000003) + 15) * 18), 1000003) + 16) * 19), 1000003) + 17) * 20), 1000003) + 18) * 21), 1000003) + 19) * 22), 1000003) + 20) * 23), 1000003) + 21) * 24), 1000003) + 22) * 25), 1000003) + 23) * 26), 1000003) + 24) * 27), 1000003) AS step_24#1597L, pmod(((a#1571L + b#1572L) + c#1573L), 3) AS _groupingexpression#1633L]
+Input [4]: [id#1569L, a#1571L, b#1572L, c#1573L]
+
+(5) HashAggregate
+Input [2]: [step_24#1597L, _groupingexpression#1633L]
+Keys [1]: [_groupingexpression#1633L]
+Functions [3]: [partial_avg(step_24#1597L), partial_min(step_24#1597L), partial_max(step_24#1597L)]
+Aggregate Attributes [4]: [sum#1634, count#1635L, min#1636L, max#1637L]
+Results [5]: [_groupingexpression#1633L, sum#1638, count#1639L, min#1640L, max#1641L]
+
+(6) Exchange
+Input [5]: [_groupingexpression#1633L, sum#1638, count#1639L, min#1640L, max#1641L]
+Arguments: hashpartitioning(_groupingexpression#1633L, 48), ENSURE_REQUIREMENTS, [plan_id=7618]
+
+(7) HashAggregate
+Input [5]: [_groupingexpression#1633L, sum#1638, count#1639L, min#1640L, max#1641L]
+Keys [1]: [_groupingexpression#1633L]
+Functions [3]: [avg(step_24#1597L), min(step_24#1597L), max(step_24#1597L)]
+Aggregate Attributes [3]: [avg(step_24#1597L)#1630, min(step_24#1597L)#1631L, max(step_24#1597L)#1632L]
+Results [4]: [_groupingexpression#1633L AS bucket#1598L, avg(step_24#1597L)#1630 AS avg_score#1599, min(step_24#1597L)#1631L AS min_score#1600L, max(step_24#1597L)#1632L AS max_score#1601L]
+
+(8) AdaptiveSparkPlan
+Output [4]: [bucket#1598L, avg_score#1599, min_score#1600L, max_score#1601L]
+Arguments: isFinalPlan=false
+
+
+
+===== explain(codegen) =====
+Found 0 WholeStageCodegen subtrees.
+
+
