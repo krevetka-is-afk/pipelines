@@ -40,17 +40,17 @@ uv run python main.py --cases all --sizes 2000000,8000000,20000000 --repeats 5 -
 - Сырые прогоны: `artifacts/raw_results.csv`
 - Планы: `artifacts/plans/*.txt`
 
-## Результаты последнего smoke-прогона
+## Результаты последнего полного прогона
 
-Параметры: `sizes=100000,300000`, `repeats=2`, `warmup=1`, `shuffle_partitions=16`.
+Параметры: `sizes=2000000,8000000,20000000`, `repeats=5`, `warmup=1`, `shuffle_partitions=48`.
 
 | Кейс | Что сравнивали | Наблюдение по median |
 | --- | --- | --- |
-| `df_rdd_aggregations` | DataFrame vs RDD | DataFrame быстрее в ~4.0x-5.6x |
-| `df_rdd_window_topn` | DataFrame vs RDD | DataFrame быстрее в ~1.47x-1.83x |
-| `df_rdd_nested_types` | DataFrame vs RDD | DataFrame быстрее в ~1.07x-2.15x |
-| `sql_df_projection_chain` | SQL vs DataFrame API | SQL быстрее в ~2.17x-2.18x |
-| `sql_df_case_vs_union` | SQL vs DataFrame API | SQL быстрее в ~1.93x-2.10x |
+| `df_rdd_aggregations` | DataFrame vs RDD | DataFrame быстрее в ~9.6x-42.1x |
+| `df_rdd_window_topn` | DataFrame vs RDD | DataFrame быстрее в ~2.6x-4.3x |
+| `df_rdd_nested_types` | DataFrame vs RDD | DataFrame быстрее в ~7.4x-15.1x |
+| `sql_df_projection_chain` | SQL vs DataFrame API | SQL быстрее в ~1.15x-1.78x |
+| `sql_df_case_vs_union` | SQL vs DataFrame API | SQL быстрее на 2M (~1.28x), но медленнее на 8M и 20M |
 
 ## Объяснение выигрыша (Catalyst/Tungsten)
 
