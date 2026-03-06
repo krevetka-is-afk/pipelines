@@ -27,7 +27,7 @@ Input [3]: [id#925L, payload#930, arr#931]
 
 (5) Exchange
 Input [4]: [id#925L, _extract_a#941, _extract_b#942, arr#931]
-Arguments: RoundRobinPartitioning(24), REPARTITION_BY_NUM, [plan_id=5741]
+Arguments: RoundRobinPartitioning(24), REPARTITION_BY_NUM, [plan_id=4765]
 
 (6) Project
 Output [4]: [id#925L, (_extract_a#941 + _extract_b#942) AS ab#932, transform(arr#931, lambdafunction((lambda x#937 * lambda x#937), lambda x#937, false)) AS arr_sq#933, aggregate(arr#931, 0, lambdafunction((lambda acc#938 + lambda x#939), lambda acc#938, lambda x#939, false), lambdafunction(lambda id#940, lambda id#940, false)) AS arr_sum#934]

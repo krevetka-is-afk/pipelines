@@ -112,8 +112,28 @@ def base_for_aggregations(spark: SparkSession, size: int) -> DataFrame:
             (F.col("id") % 1000).cast("double").alias("v"),
             (F.col("id") % 3).cast("int").alias("g"),
         )
-        .repartition(partitions, "k")
     )
+
+
+def aggregate_metrics_rdd(
+    pair: RDD[tuple[int, float]],
+    partitions: int,
+) -> RDD[tuple[int, tuple[float, float, float, int]]]:
+    zero = (0.0, float("inf"), float("-inf"), 0)
+
+    def seq(acc: tuple[float, float, float, int], value: float) -> tuple[float, float, float, int]:
+        sum_v, min_v, max_v, cnt = acc
+        return (sum_v + value, min(min_v, value), max(max_v, value), cnt + 1)
+
+    def comb(left: tuple[float, float, float, int], right: tuple[float, float, float, int]) -> tuple[float, float, float, int]:
+        return (
+            left[0] + right[0],
+            min(left[1], right[1]),
+            max(left[2], right[2]),
+            left[3] + right[3],
+        )
+
+    return pair.aggregateByKey(zero, seq, comb, numPartitions=partitions)
 
 
 def case_aggregations_action(spark: SparkSession, size: int, api: str) -> Callable[[], int]:
@@ -137,12 +157,11 @@ def case_aggregations_action(spark: SparkSession, size: int, api: str) -> Callab
         def run_rdd() -> int:
             df = base_for_aggregations(spark, size)
             pair = df.rdd.map(lambda row: (int(row["k"]), float(row["v"])))
-            sums = pair.reduceByKey(lambda a, b: a + b).collectAsMap()
-            mins = pair.reduceByKey(lambda a, b: a if a <= b else b).collectAsMap()
-            maxs = pair.reduceByKey(lambda a, b: a if a >= b else b).collectAsMap()
-            counts = pair.mapValues(lambda _: 1).reduceByKey(lambda a, b: a + b).collectAsMap()
-            avgs = {key: sums[key] / counts[key] for key in sums}
-            return len(sums) + len(mins) + len(maxs) + len(avgs)
+            partitions = input_partitions(spark)
+            out = aggregate_metrics_rdd(pair, partitions).mapValues(
+                lambda item: (item[0], item[0] / item[3], item[1], item[2], item[3])
+            )
+            return out.count()
 
         return run_rdd
 
@@ -162,7 +181,11 @@ def case_aggregations_plan(spark: SparkSession, size: int, api: str) -> str:
         return capture_df_explain(out)
     if api == RDD_API:
         pair = df.rdd.map(lambda row: (int(row["k"]), float(row["v"])))
-        return capture_rdd_explain(pair)
+        partitions = input_partitions(spark)
+        out = aggregate_metrics_rdd(pair, partitions).mapValues(
+            lambda item: (item[0], item[0] / item[3], item[1], item[2], item[3])
+        )
+        return capture_rdd_explain(out)
     raise ValueError(f"Unsupported API for aggregations plan: {api}")
 
 
@@ -179,8 +202,24 @@ def base_for_window(spark: SparkSession, size: int) -> DataFrame:
                 + (F.col("id") % 100) / F.lit(10.0)
             ).alias("score"),
         )
-        .repartition(partitions, "grp")
     )
+
+
+def rdd_top_n_by_group(
+    pair: RDD[tuple[int, tuple[float, int]]],
+    n: int,
+    partitions: int,
+) -> RDD[tuple[int, tuple[float, int]]]:
+    def top_n(items: list[tuple[float, int]]) -> list[tuple[float, int]]:
+        return sorted(items, key=lambda value: (-value[0], value[1]))[:n]
+
+    grouped_top = pair.aggregateByKey(
+        [],
+        lambda acc, value: top_n([*acc, value]),
+        lambda left, right: top_n([*left, *right]),
+        numPartitions=partitions,
+    )
+    return grouped_top.flatMap(lambda kv: [(kv[0], item) for item in kv[1]])
 
 
 def case_window_action(spark: SparkSession, size: int, api: str) -> Callable[[], int]:
@@ -199,13 +238,8 @@ def case_window_action(spark: SparkSession, size: int, api: str) -> Callable[[],
         def run_rdd() -> int:
             df = base_for_window(spark, size)
             pair = df.rdd.map(lambda row: (int(row["grp"]), (float(row["score"]), int(row["id"]))))
-
-            def top_n(items: list[tuple[float, int]]) -> list[tuple[float, int]]:
-                return sorted(items, key=lambda value: (-value[0], value[1]))[:3]
-
-            top = pair.groupByKey().flatMap(
-                lambda kv: [(kv[0], item[1], item[0]) for item in top_n(list(kv[1]))]
-            )
+            partitions = input_partitions(spark)
+            top = rdd_top_n_by_group(pair, n=3, partitions=partitions)
             return top.count()
 
         return run_rdd
@@ -221,7 +255,9 @@ def case_window_plan(spark: SparkSession, size: int, api: str) -> str:
         return capture_df_explain(top)
     if api == RDD_API:
         pair = df.rdd.map(lambda row: (int(row["grp"]), (float(row["score"]), int(row["id"]))))
-        return capture_rdd_explain(pair)
+        partitions = input_partitions(spark)
+        top = rdd_top_n_by_group(pair, n=3, partitions=partitions)
+        return capture_rdd_explain(top)
     raise ValueError(f"Unsupported API for window plan: {api}")
 
 
@@ -505,10 +541,10 @@ def get_cases() -> dict[str, BenchmarkCase]:
             family="df_vs_rdd",
             baseline_api=RDD_API,
             apis=(DF_API, RDD_API),
-            description="groupBy+agg (sum/avg/min/max/count) vs several RDD passes",
+            description="groupBy+agg (sum/avg/min/max/count) vs one-pass RDD aggregateByKey",
             optimization_reason=(
                 "Catalyst объединяет агрегации в один физический план, whole-stage codegen и "
-                "Tungsten снижают накладные расходы; RDD делает несколько действий и больше сериализации."
+                "Tungsten снижают накладные расходы; RDD все равно платит за Python-сериализацию и не использует Catalyst."
             ),
             action_builder=case_aggregations_action,
             plan_builder=case_aggregations_plan,
@@ -519,10 +555,10 @@ def get_cases() -> dict[str, BenchmarkCase]:
             family="df_vs_rdd",
             baseline_api=RDD_API,
             apis=(DF_API, RDD_API),
-            description="row_number over partition/order vs groupByKey+sort on RDD",
+            description="row_number over partition/order vs RDD aggregateByKey(top-N)",
             optimization_reason=(
                 "Window-оператор выражен декларативно, Spark строит оптимизированный план сортировки и окна; "
-                "RDD-вариант материализует группы в Python и сортирует вручную."
+                "RDD-вариант делает топ-N через Python-комбайнеры и не получает SQL/Catalyst-оптимизации."
             ),
             action_builder=case_window_action,
             plan_builder=case_window_plan,
@@ -596,7 +632,21 @@ def markdown_table(headers: list[str], rows: list[list[str]]) -> str:
     return "\n".join([header_line, separator_line, *body])
 
 
-def build_report(config: BenchmarkConfig, summaries: list[dict[str, object]], cases: dict[str, BenchmarkCase]) -> str:
+def shuffle_count_for_plan(case: BenchmarkCase, api: str, plan_text: str) -> int:
+    if case.family == "df_vs_rdd":
+        if api == RDD_API:
+            return plan_text.count("ShuffledRDD[")
+        if api == DF_API:
+            return plan_text.count("Exchange (")
+    return 0
+
+
+def build_report(
+    config: BenchmarkConfig,
+    summaries: list[dict[str, object]],
+    cases: dict[str, BenchmarkCase],
+    plan_texts: dict[tuple[str, str], str],
+) -> str:
     by_case: dict[str, list[dict[str, object]]] = {}
     for row in summaries:
         by_case.setdefault(str(row["case"]), []).append(row)
@@ -621,6 +671,48 @@ def build_report(config: BenchmarkConfig, summaries: list[dict[str, object]], ca
         "- Значение больше 1.0 означает, что API быстрее baseline.",
         "",
     ]
+
+    shuffle_rows: list[list[str]] = []
+    for case in cases.values():
+        if case.family != "df_vs_rdd":
+            continue
+        df_plan = plan_texts.get((case.key, DF_API), "")
+        rdd_plan = plan_texts.get((case.key, RDD_API), "")
+        if not df_plan or not rdd_plan:
+            continue
+
+        df_shuffle = shuffle_count_for_plan(case, DF_API, df_plan)
+        rdd_shuffle = shuffle_count_for_plan(case, RDD_API, rdd_plan)
+        parity = "yes" if df_shuffle == rdd_shuffle else "no"
+        shuffle_rows.append(
+            [
+                case.key,
+                str(df_shuffle),
+                str(rdd_shuffle),
+                parity,
+            ]
+        )
+
+    if shuffle_rows:
+        lines.extend(
+            [
+                "## Shuffle Count Parity (df_vs_rdd)",
+                "",
+                "- Counts are marker-based from saved plans: `Exchange (` for DataFrame and `ShuffledRDD[` for RDD.",
+                f"- Plan sample size: `{config.plan_sample_size}`.",
+                "",
+                markdown_table(
+                    headers=[
+                        "case",
+                        "dataframe_shuffle_markers",
+                        "rdd_shuffle_markers",
+                        "parity",
+                    ],
+                    rows=shuffle_rows,
+                ),
+                "",
+            ]
+        )
 
     for case_key, rows in by_case.items():
         rows_sorted = sorted(rows, key=lambda item: (int(item["size"]), str(item["api"])))
@@ -693,6 +785,7 @@ def run(config: BenchmarkConfig, selected_cases: list[str]) -> None:
 
     raw_rows: list[dict[str, object]] = []
     summaries: list[dict[str, object]] = []
+    plan_texts: dict[tuple[str, str], str] = {}
 
     try:
         for case_key in selected_cases:
@@ -701,6 +794,7 @@ def run(config: BenchmarkConfig, selected_cases: list[str]) -> None:
             for api in case.apis:
                 plan_text = case.plan_builder(spark, config.plan_sample_size, api)
                 write_text(plans_dir / f"{case.key}_{api.lower()}.txt", plan_text)
+                plan_texts[(case.key, api)] = plan_text
 
             for size in config.sizes:
                 medians: dict[str, float] = {}
@@ -778,7 +872,7 @@ def run(config: BenchmarkConfig, selected_cases: list[str]) -> None:
         writer.writeheader()
         writer.writerows(summaries)
 
-    report = build_report(config, summaries, cases)
+    report = build_report(config, summaries, cases, plan_texts)
     write_text(report_path, report)
 
     metadata = {

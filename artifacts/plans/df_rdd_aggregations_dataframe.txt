@@ -2,8 +2,8 @@
 == Physical Plan ==
 AdaptiveSparkPlan (6)
 +- HashAggregate (5)
-   +- HashAggregate (4)
-      +- Exchange (3)
+   +- Exchange (4)
+      +- HashAggregate (3)
          +- Project (2)
             +- Range (1)
 
@@ -16,16 +16,16 @@ Arguments: Range (0, 20000, step=1, splits=Some(24))
 Output [2]: [cast((id#0L % 4000) as int) AS k#1, cast((id#0L % 1000) as double) AS v#2]
 Input [1]: [id#0L]
 
-(3) Exchange
-Input [2]: [k#1, v#2]
-Arguments: hashpartitioning(k#1, 24), REPARTITION_BY_NUM, [plan_id=15]
-
-(4) HashAggregate
+(3) HashAggregate
 Input [2]: [k#1, v#2]
 Keys [1]: [k#1]
 Functions [5]: [partial_sum(v#2), partial_avg(v#2), partial_min(v#2), partial_max(v#2), partial_count(1)]
 Aggregate Attributes [6]: [sum#17, sum#18, count#19L, min#20, max#21, count#22L]
 Results [7]: [k#1, sum#23, sum#24, count#25L, min#26, max#27, count#28L]
+
+(4) Exchange
+Input [7]: [k#1, sum#23, sum#24, count#25L, min#26, max#27, count#28L]
+Arguments: hashpartitioning(k#1, 48), ENSURE_REQUIREMENTS, [plan_id=15]
 
 (5) HashAggregate
 Input [7]: [k#1, sum#23, sum#24, count#25L, min#26, max#27, count#28L]

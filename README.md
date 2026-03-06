@@ -7,9 +7,9 @@
 Сделаны все требуемые сценарии:
 
 1. `df_rdd_aggregations`:
-   `DataFrame.groupBy().agg(sum, avg, min, max, count)` против нескольких RDD-действий.
+   `DataFrame.groupBy().agg(sum, avg, min, max, count)` против one-pass `RDD.aggregateByKey`.
 2. `df_rdd_window_topn`:
-   `row_number() over(partition/order)` против `RDD.groupByKey + sort`.
+   `row_number() over(partition/order)` против `RDD.aggregateByKey(top-N)`.
 3. `df_rdd_nested_types`:
    `struct/array + built-in functions` против ручной обработки вложенных структур в RDD.
 4. `sql_df_projection_chain`:
@@ -49,19 +49,29 @@ uv run python main.py --cases all --sizes 2000000,8000000,20000000 --repeats 5 -
 
 | Кейс | Что сравнивали | Наблюдение по median |
 | --- | --- | --- |
-| `df_rdd_aggregations` | DataFrame vs RDD | DataFrame быстрее в ~9.6x-42.1x |
-| `df_rdd_window_topn` | DataFrame vs RDD | DataFrame быстрее в ~2.6x-4.3x |
-| `df_rdd_nested_types` | DataFrame vs RDD | DataFrame быстрее в ~7.4x-15.1x |
-| `sql_df_projection_chain` | SQL vs DataFrame API | SQL быстрее в ~1.15x-1.78x |
-| `sql_df_case_vs_union` | SQL vs DataFrame API | SQL быстрее на 2M (~1.28x), но медленнее на 8M и 20M |
+| `df_rdd_aggregations` | DataFrame vs RDD | DataFrame быстрее в ~2.4x-18.7x |
+| `df_rdd_window_topn` | DataFrame vs RDD | DataFrame быстрее в ~2.5x-6.2x |
+| `df_rdd_nested_types` | DataFrame vs RDD | DataFrame быстрее в ~7.0x-14.5x |
+| `sql_df_projection_chain` | SQL vs DataFrame API | SQL быстрее в ~1.21x-1.70x |
+| `sql_df_case_vs_union` | SQL vs DataFrame API | SQL быстрее на 2M (~1.45x), но медленнее на 8M и 20M |
+
+## Shuffle parity (df_vs_rdd)
+
+Подсчет по сохраненным планам: `Exchange (` для DataFrame и `ShuffledRDD[` для RDD.
+
+| Кейс | DataFrame shuffle markers | RDD shuffle markers | parity |
+| --- | --- | --- | --- |
+| `df_rdd_aggregations` | 1 | 1 | yes |
+| `df_rdd_window_topn` | 1 | 1 | yes |
+| `df_rdd_nested_types` | 1 | 0 | no |
 
 ## Объяснение выигрыша (Catalyst/Tungsten)
 
 1. **Множественные агрегации (DF > RDD)**
-   Catalyst объединяет агрегаты в единый физический план, а whole-stage codegen/Tungsten снижают накладные расходы исполнения. В RDD-версии сделано несколько проходов и больше сериализации.
+   Catalyst объединяет агрегаты в единый физический план, а whole-stage codegen/Tungsten снижают накладные расходы исполнения. Даже при one-pass `aggregateByKey` RDD-ветка платит за Python-сериализацию и не использует Catalyst.
 
 2. **Оконные функции (DF > RDD)**
-   `row_number over(...)` выражается декларативно и выполняется в оптимизированном плане Spark. RDD-вариант материализует группы и делает сортировку в пользовательском коде.
+   `row_number over(...)` выражается декларативно и выполняется в оптимизированном плане Spark. RDD-вариант делает top-N через Python-комбайнеры и все равно не получает SQL/Catalyst-оптимизации.
 
 3. **Вложенные типы (DF > RDD)**
    Built-in функции (`transform`, `aggregate`, доступ к `struct`) выполняются внутри JVM-плана с codegen. RDD-ветка уходит в Python-объекты и ручную обработку.

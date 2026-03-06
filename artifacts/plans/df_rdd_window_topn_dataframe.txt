@@ -1,13 +1,15 @@
 ===== explain(formatted) =====
 == Physical Plan ==
-AdaptiveSparkPlan (8)
-+- Filter (7)
-   +- Window (6)
-      +- WindowGroupLimit (5)
-         +- Sort (4)
-            +- Exchange (3)
-               +- Project (2)
-                  +- Range (1)
+AdaptiveSparkPlan (10)
++- Filter (9)
+   +- Window (8)
+      +- WindowGroupLimit (7)
+         +- Sort (6)
+            +- Exchange (5)
+               +- WindowGroupLimit (4)
+                  +- Sort (3)
+                     +- Project (2)
+                        +- Range (1)
 
 
 (1) Range
@@ -18,27 +20,35 @@ Arguments: Range (0, 20000, step=1, splits=Some(24))
 Output [3]: [cast((id#591L % 3000) as int) AS grp#592, id#591L, ((SIN((cast(id#591L as double) / 10.0)) + COS((cast(id#591L as double) / 17.0))) + (cast((id#591L % 100) as double) / 10.0)) AS score#594]
 Input [1]: [id#591L]
 
-(3) Exchange
-Input [3]: [grp#592, id#591L, score#594]
-Arguments: hashpartitioning(grp#592, 24), REPARTITION_BY_NUM, [plan_id=2189]
-
-(4) Sort
+(3) Sort
 Input [3]: [grp#592, id#591L, score#594]
 Arguments: [grp#592 ASC NULLS FIRST, score#594 DESC NULLS LAST, id#591L ASC NULLS FIRST], false, 0
 
-(5) WindowGroupLimit
+(4) WindowGroupLimit
+Input [3]: [grp#592, id#591L, score#594]
+Arguments: [grp#592], [score#594 DESC NULLS LAST, id#591L ASC NULLS FIRST], row_number(), 3, Partial
+
+(5) Exchange
+Input [3]: [grp#592, id#591L, score#594]
+Arguments: hashpartitioning(grp#592, 48), ENSURE_REQUIREMENTS, [plan_id=1761]
+
+(6) Sort
+Input [3]: [grp#592, id#591L, score#594]
+Arguments: [grp#592 ASC NULLS FIRST, score#594 DESC NULLS LAST, id#591L ASC NULLS FIRST], false, 0
+
+(7) WindowGroupLimit
 Input [3]: [grp#592, id#591L, score#594]
 Arguments: [grp#592], [score#594 DESC NULLS LAST, id#591L ASC NULLS FIRST], row_number(), 3, Final
 
-(6) Window
+(8) Window
 Input [3]: [grp#592, id#591L, score#594]
 Arguments: [row_number() windowspecdefinition(grp#592, score#594 DESC NULLS LAST, id#591L ASC NULLS FIRST, specifiedwindowframe(RowFrame, unboundedpreceding$(), currentrow$())) AS rn#595], [grp#592], [score#594 DESC NULLS LAST, id#591L ASC NULLS FIRST]
 
-(7) Filter
+(9) Filter
 Input [4]: [grp#592, id#591L, score#594, rn#595]
 Condition : (rn#595 <= 3)
 
-(8) AdaptiveSparkPlan
+(10) AdaptiveSparkPlan
 Output [4]: [grp#592, id#591L, score#594, rn#595]
 Arguments: isFinalPlan=false
 

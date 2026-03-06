@@ -20,7 +20,7 @@ Input [1]: [id#1569L]
 
 (3) Exchange
 Input [4]: [id#1569L, a#1571L, b#1572L, c#1573L]
-Arguments: RoundRobinPartitioning(24), REPARTITION_BY_NUM, [plan_id=7613]
+Arguments: RoundRobinPartitioning(24), REPARTITION_BY_NUM, [plan_id=6637]
 
 (4) Project
 Output [2]: [pmod(((pmod(((pmod(((pmod(((pmod(((pmod(((pmod(((pmod(((pmod(((pmod(((pmod(((pmod(((pmod(((pmod(((pmod(((pmod(((pmod(((pmod(((pmod(((pmod(((pmod(((pmod(((pmod(((pmod(((id#1569L + 1) * 4), 1000003) + 2) * 5), 1000003) + 3) * 6), 1000003) + 4) * 7), 1000003) + 5) * 8), 1000003) + 6) * 9), 1000003) + 7) * 10), 1000003) + 8) * 11), 1000003) + 9) * 12), 1000003) + 10) * 13), 1000003) + 11) * 14), 1000003) + 12) * 15), 1000003) + 13) * 16), 1000003) + 14) * 17), 1000003) + 15) * 18), 1000003) + 16) * 19), 1000003) + 17) * 20), 1000003) + 18) * 21), 1000003) + 19) * 22), 1000003) + 20) * 23), 1000003) + 21) * 24), 1000003) + 22) * 25), 1000003) + 23) * 26), 1000003) + 24) * 27), 1000003) AS step_24#1597L, pmod(((a#1571L + b#1572L) + c#1573L), 3) AS _groupingexpression#1633L]
@@ -35,7 +35,7 @@ Results [5]: [_groupingexpression#1633L, sum#1638, count#1639L, min#1640L, max#1
 
 (6) Exchange
 Input [5]: [_groupingexpression#1633L, sum#1638, count#1639L, min#1640L, max#1641L]
-Arguments: hashpartitioning(_groupingexpression#1633L, 48), ENSURE_REQUIREMENTS, [plan_id=7618]
+Arguments: hashpartitioning(_groupingexpression#1633L, 48), ENSURE_REQUIREMENTS, [plan_id=6642]
 
 (7) HashAggregate
 Input [5]: [_groupingexpression#1633L, sum#1638, count#1639L, min#1640L, max#1641L]

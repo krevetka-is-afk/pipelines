@@ -36,7 +36,7 @@ Input [1]: [id#3350L]
 
 (4) Exchange
 Input [2]: [metric#3352, grp#3353]
-Arguments: RoundRobinPartitioning(24), REPARTITION_BY_NUM, [plan_id=13121]
+Arguments: RoundRobinPartitioning(24), REPARTITION_BY_NUM, [plan_id=12145]
 
 (5) Project
 Output [3]: [grp#3353, low AS segment#3354, metric#3352]
@@ -56,7 +56,7 @@ Input [1]: [id#3357L]
 
 (9) Exchange
 Input [2]: [metric#3359, grp#3360]
-Arguments: RoundRobinPartitioning(24), REPARTITION_BY_NUM, [plan_id=13126]
+Arguments: RoundRobinPartitioning(24), REPARTITION_BY_NUM, [plan_id=12150]
 
 (10) Project
 Output [3]: [grp#3360, mid AS segment#3355, metric#3359]
@@ -76,7 +76,7 @@ Input [1]: [id#3361L]
 
 (14) Exchange
 Input [2]: [metric#3363, grp#3364]
-Arguments: RoundRobinPartitioning(24), REPARTITION_BY_NUM, [plan_id=13131]
+Arguments: RoundRobinPartitioning(24), REPARTITION_BY_NUM, [plan_id=12155]
 
 (15) Project
 Output [3]: [grp#3364, high AS segment#3356, metric#3363]
@@ -93,7 +93,7 @@ Results [5]: [grp#3353, segment#3354, count#3375L, sum#3376, count#3377L]
 
 (18) Exchange
 Input [5]: [grp#3353, segment#3354, count#3375L, sum#3376, count#3377L]
-Arguments: hashpartitioning(grp#3353, segment#3354, 48), ENSURE_REQUIREMENTS, [plan_id=13137]
+Arguments: hashpartitioning(grp#3353, segment#3354, 48), ENSURE_REQUIREMENTS, [plan_id=12161]
 
 (19) HashAggregate
 Input [5]: [grp#3353, segment#3354, count#3375L, sum#3376, count#3377L]

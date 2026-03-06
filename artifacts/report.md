@@ -16,37 +16,48 @@
 - `SQL vs DF`: показатель `speedup_vs_baseline` = `DF_median / API_median`.
 - Значение больше 1.0 означает, что API быстрее baseline.
 
+## Shuffle Count Parity (df_vs_rdd)
+
+- Counts are marker-based from saved plans: `Exchange (` for DataFrame and `ShuffledRDD[` for RDD.
+- Plan sample size: `20000`.
+
+| case | dataframe_shuffle_markers | rdd_shuffle_markers | parity |
+| --- | --- | --- | --- |
+| df_rdd_aggregations | 1 | 1 | yes |
+| df_rdd_window_topn | 1 | 1 | yes |
+| df_rdd_nested_types | 1 | 0 | no |
+
 ## Multiple Aggregations
 
 - Case key: `df_rdd_aggregations`
-- Description: groupBy+agg (sum/avg/min/max/count) vs several RDD passes
-- Why faster: Catalyst объединяет агрегации в один физический план, whole-stage codegen и Tungsten снижают накладные расходы; RDD делает несколько действий и больше сериализации.
+- Description: groupBy+agg (sum/avg/min/max/count) vs one-pass RDD aggregateByKey
+- Why faster: Catalyst объединяет агрегации в один физический план, whole-stage codegen и Tungsten снижают накладные расходы; RDD все равно платит за Python-сериализацию и не использует Catalyst.
 
 | size | api | median_sec | min_sec | max_sec | speedup_vs_baseline | result_rows |
 | --- | --- | --- | --- | --- | --- | --- |
-| 2000000 | DataFrame | 0.252 | 0.214 | 0.288 | 9.559 | 4000 |
-| 2000000 | RDD | 2.413 | 2.292 | 2.528 | 1.000 | 16000 |
-| 8000000 | DataFrame | 0.286 | 0.279 | 0.460 | 27.080 | 4000 |
-| 8000000 | RDD | 7.754 | 7.277 | 8.086 | 1.000 | 16000 |
-| 20000000 | DataFrame | 0.448 | 0.422 | 0.460 | 42.098 | 4000 |
-| 20000000 | RDD | 18.865 | 18.602 | 19.826 | 1.000 | 16000 |
+| 2000000 | DataFrame | 0.258 | 0.250 | 0.281 | 2.392 | 4000 |
+| 2000000 | RDD | 0.618 | 0.585 | 0.648 | 1.000 | 4000 |
+| 8000000 | DataFrame | 0.239 | 0.227 | 0.241 | 7.972 | 4000 |
+| 8000000 | RDD | 1.908 | 1.814 | 1.933 | 1.000 | 4000 |
+| 20000000 | DataFrame | 0.232 | 0.229 | 0.253 | 18.690 | 4000 |
+| 20000000 | RDD | 4.336 | 4.315 | 4.454 | 1.000 | 4000 |
 
 - Plans: `artifacts/plans/df_rdd_aggregations_*.txt`
 
 ## Window Top-N
 
 - Case key: `df_rdd_window_topn`
-- Description: row_number over partition/order vs groupByKey+sort on RDD
-- Why faster: Window-оператор выражен декларативно, Spark строит оптимизированный план сортировки и окна; RDD-вариант материализует группы в Python и сортирует вручную.
+- Description: row_number over partition/order vs RDD aggregateByKey(top-N)
+- Why faster: Window-оператор выражен декларативно, Spark строит оптимизированный план сортировки и окна; RDD-вариант делает топ-N через Python-комбайнеры и не получает SQL/Catalyst-оптимизации.
 
 | size | api | median_sec | min_sec | max_sec | speedup_vs_baseline | result_rows |
 | --- | --- | --- | --- | --- | --- | --- |
-| 2000000 | DataFrame | 0.367 | 0.361 | 0.377 | 2.623 | 9000 |
-| 2000000 | RDD | 0.964 | 0.927 | 0.993 | 1.000 | 9000 |
-| 8000000 | DataFrame | 0.839 | 0.777 | 1.096 | 3.973 | 9000 |
-| 8000000 | RDD | 3.334 | 3.039 | 3.455 | 1.000 | 9000 |
-| 20000000 | DataFrame | 1.809 | 1.745 | 2.395 | 4.313 | 9000 |
-| 20000000 | RDD | 7.804 | 7.710 | 7.917 | 1.000 | 9000 |
+| 2000000 | DataFrame | 0.311 | 0.296 | 0.321 | 2.519 | 9000 |
+| 2000000 | RDD | 0.784 | 0.716 | 0.882 | 1.000 | 9000 |
+| 8000000 | DataFrame | 0.416 | 0.383 | 0.439 | 6.198 | 9000 |
+| 8000000 | RDD | 2.576 | 2.526 | 2.630 | 1.000 | 9000 |
+| 20000000 | DataFrame | 1.033 | 1.011 | 1.123 | 5.950 | 9000 |
+| 20000000 | RDD | 6.146 | 5.984 | 6.293 | 1.000 | 9000 |
 
 - Plans: `artifacts/plans/df_rdd_window_topn_*.txt`
 
@@ -58,12 +69,12 @@
 
 | size | api | median_sec | min_sec | max_sec | speedup_vs_baseline | result_rows |
 | --- | --- | --- | --- | --- | --- | --- |
-| 2000000 | DataFrame | 0.211 | 0.207 | 0.219 | 7.384 | 2000000 |
-| 2000000 | RDD | 1.558 | 1.519 | 1.577 | 1.000 | 2000000 |
-| 8000000 | DataFrame | 0.391 | 0.382 | 0.407 | 15.111 | 8000000 |
-| 8000000 | RDD | 5.912 | 5.767 | 6.053 | 1.000 | 8000000 |
-| 20000000 | DataFrame | 0.953 | 0.893 | 1.094 | 14.437 | 20000000 |
-| 20000000 | RDD | 13.761 | 13.721 | 14.177 | 1.000 | 20000000 |
+| 2000000 | DataFrame | 0.218 | 0.212 | 0.220 | 6.994 | 2000000 |
+| 2000000 | RDD | 1.522 | 1.478 | 1.582 | 1.000 | 2000000 |
+| 8000000 | DataFrame | 0.380 | 0.372 | 0.495 | 14.454 | 8000000 |
+| 8000000 | RDD | 5.496 | 5.425 | 5.614 | 1.000 | 8000000 |
+| 20000000 | DataFrame | 0.930 | 0.860 | 1.078 | 14.487 | 20000000 |
+| 20000000 | RDD | 13.470 | 13.168 | 13.697 | 1.000 | 20000000 |
 
 - Plans: `artifacts/plans/df_rdd_nested_types_*.txt`
 
@@ -75,12 +86,12 @@
 
 | size | api | median_sec | min_sec | max_sec | speedup_vs_baseline | result_rows |
 | --- | --- | --- | --- | --- | --- | --- |
-| 2000000 | DataFrame | 0.676 | 0.645 | 0.712 | 1.000 | 3 |
-| 2000000 | SQL | 0.381 | 0.360 | 0.424 | 1.775 | 3 |
-| 8000000 | DataFrame | 0.975 | 0.964 | 1.149 | 1.000 | 3 |
-| 8000000 | SQL | 0.707 | 0.698 | 0.807 | 1.380 | 3 |
-| 20000000 | DataFrame | 1.896 | 1.825 | 1.922 | 1.000 | 3 |
-| 20000000 | SQL | 1.646 | 1.609 | 1.749 | 1.151 | 3 |
+| 2000000 | DataFrame | 0.640 | 0.613 | 0.690 | 1.000 | 3 |
+| 2000000 | SQL | 0.376 | 0.363 | 0.385 | 1.704 | 3 |
+| 8000000 | DataFrame | 0.959 | 0.946 | 0.980 | 1.000 | 3 |
+| 8000000 | SQL | 0.712 | 0.696 | 0.767 | 1.348 | 3 |
+| 20000000 | DataFrame | 1.930 | 1.768 | 2.009 | 1.000 | 3 |
+| 20000000 | SQL | 1.600 | 1.559 | 1.650 | 1.207 | 3 |
 
 - Plans: `artifacts/plans/sql_df_projection_chain_*.txt`
 
@@ -92,12 +103,12 @@
 
 | size | api | median_sec | min_sec | max_sec | speedup_vs_baseline | result_rows |
 | --- | --- | --- | --- | --- | --- | --- |
-| 2000000 | DataFrame | 0.464 | 0.445 | 0.562 | 1.000 | 21 |
-| 2000000 | SQL | 0.363 | 0.327 | 0.399 | 1.277 | 21 |
-| 8000000 | DataFrame | 0.605 | 0.582 | 0.658 | 1.000 | 21 |
-| 8000000 | SQL | 0.674 | 0.663 | 0.707 | 0.898 | 21 |
-| 20000000 | DataFrame | 0.916 | 0.907 | 0.937 | 1.000 | 21 |
-| 20000000 | SQL | 1.533 | 1.457 | 1.551 | 0.598 | 21 |
+| 2000000 | DataFrame | 0.478 | 0.449 | 0.544 | 1.000 | 21 |
+| 2000000 | SQL | 0.329 | 0.311 | 0.357 | 1.451 | 21 |
+| 8000000 | DataFrame | 0.595 | 0.591 | 0.620 | 1.000 | 21 |
+| 8000000 | SQL | 0.656 | 0.632 | 0.744 | 0.907 | 21 |
+| 20000000 | DataFrame | 0.863 | 0.814 | 1.064 | 1.000 | 21 |
+| 20000000 | SQL | 1.380 | 1.332 | 1.429 | 0.626 | 21 |
 
 - Plans: `artifacts/plans/sql_df_case_vs_union_*.txt`
 

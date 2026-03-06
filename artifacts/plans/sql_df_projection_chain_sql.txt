@@ -20,7 +20,7 @@ Input [1]: [id#1548L]
 
 (3) Exchange
 Input [4]: [id#1548L, a#1550L, b#1551L, c#1552L]
-Arguments: RoundRobinPartitioning(24), REPARTITION_BY_NUM, [plan_id=7588]
+Arguments: RoundRobinPartitioning(24), REPARTITION_BY_NUM, [plan_id=6612]
 
 (4) Project
 Output [2]: [id#1548L, pmod(((a#1550L + b#1551L) + c#1552L), 3) AS _groupingexpression#1560L]
@@ -35,7 +35,7 @@ Results [5]: [_groupingexpression#1560L, sum#1565, count#1566L, min#1567L, max#1
 
 (6) Exchange
 Input [5]: [_groupingexpression#1560L, sum#1565, count#1566L, min#1567L, max#1568L]
-Arguments: hashpartitioning(_groupingexpression#1560L, 48), ENSURE_REQUIREMENTS, [plan_id=7593]
+Arguments: hashpartitioning(_groupingexpression#1560L, 48), ENSURE_REQUIREMENTS, [plan_id=6617]
 
 (7) HashAggregate
 Input [5]: [_groupingexpression#1560L, sum#1565, count#1566L, min#1567L, max#1568L]
